@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tab Manager</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Open Tabs</h1>
+      <div class="tab-count">
+        <span id="tabCount">0</span> tabs
+      </div>
+    </div>
+
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Search tabs..." />
+    </div>
+
+    <div id="tabList" class="tab-list">
+      <!-- Tabs will be dynamically inserted here -->
+    </div>
+
+    <div class="footer">
+      <button id="closeAllBtn" class="btn-secondary">Close All Tabs</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
