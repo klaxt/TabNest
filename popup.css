@@ -232,6 +232,12 @@ body {
   text-overflow: ellipsis;
 }
 
+.tab-elapsed {
+  font-size: 11px;
+  color: #b0b0b5;
+  margin-top: 2px;
+}
+
 .close-btn {
   width: 24px;
   height: 24px;

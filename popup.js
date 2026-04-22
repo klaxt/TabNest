@@ -29,12 +29,16 @@ function loadTabs() {
       seen.add(tab.id);
       return true;
     });
-    displayTabs(allTabs);
-    updateTabCount(allTabs.length);
+
+    const keys = allTabs.map(tab => `tab_${tab.id}`);
+    browser.storage.local.get(keys, function(timestamps) {
+      displayTabs(allTabs, timestamps);
+      updateTabCount(allTabs.length);
+    });
   });
 }
 
-function displayTabs(tabs) {
+function displayTabs(tabs, timestamps = {}) {
   const tabList = document.getElementById('tabList');
   tabList.innerHTML = '';
 
@@ -47,7 +51,7 @@ function displayTabs(tabs) {
   const unpinnedTabs = tabs.filter(tab => !tab.pinned);
 
   if (pinnedTabs.length > 0) {
-    tabList.appendChild(buildWindowGroup('pinned', 'Pinned Tabs', pinnedTabs));
+    tabList.appendChild(buildWindowGroup('pinned', 'Pinned Tabs', pinnedTabs, timestamps));
   }
 
   // Group unpinned tabs by window, preserving order
@@ -62,11 +66,11 @@ function displayTabs(tabs) {
   });
 
   windowOrder.forEach((windowId, index) => {
-    tabList.appendChild(buildWindowGroup(windowId, `Window ${index + 1}`, windowGroups[windowId]));
+    tabList.appendChild(buildWindowGroup(windowId, `Window ${index + 1}`, windowGroups[windowId], timestamps));
   });
 }
 
-function buildWindowGroup(windowId, label, tabs) {
+function buildWindowGroup(windowId, label, tabs, timestamps) {
   const key = String(windowId);
   const isCollapsed = collapsedWindows.has(key);
 
@@ -96,7 +100,7 @@ function buildWindowGroup(windowId, label, tabs) {
   const tabContainer = document.createElement('div');
   tabContainer.className = 'window-tabs' + (isCollapsed ? ' collapsed' : '');
 
-  tabs.forEach(tab => tabContainer.appendChild(createTabElement(tab)));
+  tabs.forEach(tab => tabContainer.appendChild(createTabElement(tab, timestamps)));
 
   windowGroup.appendChild(windowHeader);
   windowGroup.appendChild(tabContainer);
@@ -119,7 +123,18 @@ function toggleWindow(windowId) {
   }
 }
 
-function createTabElement(tab) {
+function formatElapsed(ms) {
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours < 24) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+function createTabElement(tab, timestamps = {}) {
   const tabItem = document.createElement('div');
   tabItem.className = 'tab-item';
   if (tab.active) {
@@ -146,8 +161,14 @@ function createTabElement(tab) {
   url.textContent = tab.url;
   url.title = tab.url;
 
+  const openedAt = timestamps[`tab_${tab.id}`];
+  const elapsed = document.createElement('div');
+  elapsed.className = 'tab-elapsed';
+  elapsed.textContent = openedAt ? formatElapsed(Date.now() - openedAt) : '';
+
   tabInfo.appendChild(title);
   tabInfo.appendChild(url);
+  tabInfo.appendChild(elapsed);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'close-btn';
@@ -170,19 +191,22 @@ function createTabElement(tab) {
 }
 
 function filterTabs(searchTerm) {
-  if (!searchTerm) {
-    displayTabs(allTabs);
-    return;
-  }
+  const keys = allTabs.map(tab => `tab_${tab.id}`);
+  browser.storage.local.get(keys, function(timestamps) {
+    if (!searchTerm) {
+      displayTabs(allTabs, timestamps);
+      return;
+    }
 
-  const filtered = allTabs.filter(tab => {
-    const title = (tab.title || '').toLowerCase();
-    const url = (tab.url || '').toLowerCase();
-    const term = searchTerm.toLowerCase();
-    return title.includes(term) || url.includes(term);
+    const filtered = allTabs.filter(tab => {
+      const title = (tab.title || '').toLowerCase();
+      const url = (tab.url || '').toLowerCase();
+      const term = searchTerm.toLowerCase();
+      return title.includes(term) || url.includes(term);
+    });
+
+    displayTabs(filtered, timestamps);
   });
-
-  displayTabs(filtered);
 }
 
 function switchToTab(tabId) {
