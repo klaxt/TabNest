@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get your Safari Tab Manager extension up and running in minutes!
+Get your Safari TabNest extension up and running in minutes!
 
 ## Fastest Way to Install (For Development/Testing)
 
@@ -19,13 +19,13 @@ Get your Safari Tab Manager extension up and running in minutes!
 3. **Load Your Extension**
    ```
    Safari → Develop → Add temporary extensions...
-   Navigate to and select the "/workspace/safari-tab-manager" folder
+   Navigate to and select the "/workspace/tabnest" folder
    Click "Select"
    ```
 
 4. **Enable in Safari**
    ```
-   Safari → Preferences → Extensions → Enable "Tab Manager"
+   Safari → Preferences → Extensions → Enable "TabNest"
    ```
 
 **Note**: With this method, you'll need to reload the extension each time Safari restarts.
@@ -37,12 +37,12 @@ Get your Safari Tab Manager extension up and running in minutes!
 1. **Convert to Safari App Extension**
    ```bash
    cd /workspace
-   xcrun safari-web-extension-converter safari-tab-manager --app-name "Tab Manager"
+   xcrun safari-web-extension-converter tabnest --app-name "TabNest"
    ```
 
 2. **Open in Xcode**
    ```bash
-   open "Tab Manager/Tab Manager.xcodeproj"
+   open "TabNest/TabNest.xcodeproj"
    ```
 
 3. **Build and Run**
@@ -52,7 +52,7 @@ Get your Safari Tab Manager extension up and running in minutes!
 
 4. **Enable in Safari**
    ```
-   Safari → Preferences → Extensions → Enable "Tab Manager"
+   Safari → Preferences → Extensions → Enable "TabNest"
    ```
 
 ---
@@ -61,7 +61,7 @@ Get your Safari Tab Manager extension up and running in minutes!
 
 After installation:
 
-1. Click the Tab Manager icon in Safari's toolbar
+1. Click the TabNest icon in Safari's toolbar
 2. You should see a dropdown listing all your open tabs
 3. Try clicking a tab to switch to it
 4. Try searching for a tab by typing in the search box
@@ -73,7 +73,7 @@ After installation:
 
 **Icon doesn't appear?**
 - Check Safari → Preferences → Extensions
-- Make sure "Tab Manager" is checked
+- Make sure "TabNest" is checked
 
 **"browser is not defined" error?**
 - This extension only works in Safari
