@@ -1,3 +1,7 @@
+:root {
+  color-scheme: light dark;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -435,4 +439,157 @@ body {
   color: #86868b;
   font-size: 13px;
   background: white;
+}
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  body {
+    color: rgba(255, 255, 255, 0.85);
+    background: #1c1c1e;
+  }
+
+  .header {
+    background: rgba(30, 30, 32, 0.97);
+    border-bottom-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .header-title {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .tab-count {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .search-inner {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .search-inner:focus-within {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(0, 122, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+  }
+
+  #searchInput {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  #searchInput::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .tab-list {
+    background: #1c1c1e;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  .window-group {
+    background: #2c2c2e;
+  }
+
+  .window-header {
+    background: rgba(255, 255, 255, 0.04);
+    border-top-color: rgba(255, 255, 255, 0.06);
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .window-header:hover,
+  .window-group[data-window-id="pinned"] .window-header:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .window-group[data-window-id="pinned"] .window-header {
+    background: rgba(0, 122, 255, 0.1);
+  }
+
+  .window-label {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .window-group[data-window-id="pinned"] .window-label {
+    color: #007AFF;
+  }
+
+  .window-tab-count {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .window-chevron {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .window-chevron:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .drag-handle {
+    color: rgba(255, 255, 255, 0.2);
+  }
+
+  .window-group.drag-over {
+    outline-color: #007AFF;
+  }
+
+  .rename-input {
+    background: #3a3a3c;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .tab-item {
+    background: #2c2c2e;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .tab-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .tab-item.active {
+    background: rgba(0, 122, 255, 0.15);
+  }
+
+  .tab-title {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .tab-url {
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .tab-elapsed {
+    color: rgba(255, 255, 255, 0.25);
+  }
+
+  .close-btn {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .close-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .close-btn svg path {
+    stroke: rgba(255, 255, 255, 0.5);
+  }
+
+  .no-tabs {
+    background: #1c1c1e;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .footer {
+    background: rgba(28, 28, 30, 0.95);
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .btn-confirm-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .close-confirm-label {
+    color: rgba(255, 255, 255, 0.4);
+  }
 }
