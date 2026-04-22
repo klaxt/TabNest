@@ -1,5 +1,6 @@
 // Get all tabs and display them
 let allTabs = [];
+const collapsedWindows = new Set();
 
 document.addEventListener('DOMContentLoaded', function() {
   loadTabs();
@@ -7,13 +8,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setupEventListeners() {
-  // Search functionality
   const searchInput = document.getElementById('searchInput');
   searchInput.addEventListener('input', function() {
     filterTabs(this.value);
   });
 
-  // Close all tabs button
   const closeAllBtn = document.getElementById('closeAllBtn');
   closeAllBtn.addEventListener('click', function() {
     if (confirm('Are you sure you want to close all tabs?')) {
@@ -23,7 +22,6 @@ function setupEventListeners() {
 }
 
 function loadTabs() {
-  // Query all tabs in all windows
   browser.tabs.query({}, function(tabs) {
     allTabs = tabs;
     displayTabs(tabs);
@@ -40,33 +38,70 @@ function displayTabs(tabs) {
     return;
   }
 
-  // Group tabs by window
+  // Group tabs by window, preserving order
   const windowGroups = {};
+  const windowOrder = [];
   tabs.forEach(tab => {
     if (!windowGroups[tab.windowId]) {
       windowGroups[tab.windowId] = [];
+      windowOrder.push(tab.windowId);
     }
     windowGroups[tab.windowId].push(tab);
   });
 
-  // Display tabs grouped by window
-  Object.keys(windowGroups).forEach((windowId, index) => {
+  windowOrder.forEach((windowId, index) => {
     const windowTabs = windowGroups[windowId];
+    const isCollapsed = collapsedWindows.has(String(windowId));
 
-    // Add window header if there's more than one window
-    if (Object.keys(windowGroups).length > 1) {
-      const windowHeader = document.createElement('div');
-      windowHeader.className = 'window-header';
-      windowHeader.textContent = `Window ${index + 1} (${windowTabs.length} tabs)`;
-      tabList.appendChild(windowHeader);
-    }
+    const windowGroup = document.createElement('div');
+    windowGroup.className = 'window-group';
+    windowGroup.dataset.windowId = windowId;
 
-    // Add each tab
+    const windowHeader = document.createElement('div');
+    windowHeader.className = 'window-header';
+
+    const label = document.createElement('span');
+    label.className = 'window-label';
+    label.textContent = `Window ${index + 1}`;
+
+    const countBadge = document.createElement('span');
+    countBadge.className = 'window-tab-count';
+    countBadge.textContent = `${windowTabs.length} tab${windowTabs.length !== 1 ? 's' : ''}`;
+
+    const chevron = document.createElement('span');
+    chevron.className = 'window-chevron' + (isCollapsed ? ' collapsed' : '');
+
+    windowHeader.appendChild(label);
+    windowHeader.appendChild(countBadge);
+    windowHeader.appendChild(chevron);
+    windowHeader.addEventListener('click', () => toggleWindow(windowId));
+
+    const tabContainer = document.createElement('div');
+    tabContainer.className = 'window-tabs' + (isCollapsed ? ' collapsed' : '');
+
     windowTabs.forEach(tab => {
-      const tabItem = createTabElement(tab);
-      tabList.appendChild(tabItem);
+      tabContainer.appendChild(createTabElement(tab));
     });
+
+    windowGroup.appendChild(windowHeader);
+    windowGroup.appendChild(tabContainer);
+    tabList.appendChild(windowGroup);
   });
+}
+
+function toggleWindow(windowId) {
+  const key = String(windowId);
+  if (collapsedWindows.has(key)) {
+    collapsedWindows.delete(key);
+  } else {
+    collapsedWindows.add(key);
+  }
+
+  const windowGroup = document.querySelector(`[data-window-id="${windowId}"]`);
+  if (windowGroup) {
+    windowGroup.querySelector('.window-tabs').classList.toggle('collapsed');
+    windowGroup.querySelector('.window-chevron').classList.toggle('collapsed');
+  }
 }
 
 function createTabElement(tab) {
@@ -76,7 +111,6 @@ function createTabElement(tab) {
     tabItem.classList.add('active');
   }
 
-  // Favicon
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
   favicon.src = tab.favIconUrl || 'icons/icon-16.png';
@@ -84,17 +118,14 @@ function createTabElement(tab) {
     this.src = 'icons/icon-16.png';
   };
 
-  // Tab info container
   const tabInfo = document.createElement('div');
   tabInfo.className = 'tab-info';
 
-  // Tab title
   const title = document.createElement('div');
   title.className = 'tab-title';
   title.textContent = tab.title || 'Untitled';
   title.title = tab.title;
 
-  // Tab URL
   const url = document.createElement('div');
   url.className = 'tab-url';
   url.textContent = tab.url;
@@ -103,7 +134,6 @@ function createTabElement(tab) {
   tabInfo.appendChild(title);
   tabInfo.appendChild(url);
 
-  // Close button
   const closeBtn = document.createElement('button');
   closeBtn.className = 'close-btn';
   closeBtn.innerHTML = '&times;';
@@ -113,7 +143,6 @@ function createTabElement(tab) {
     closeTab(tab.id);
   });
 
-  // Click to switch to tab
   tabItem.addEventListener('click', function() {
     switchToTab(tab.id);
   });
@@ -143,22 +172,18 @@ function filterTabs(searchTerm) {
 
 function switchToTab(tabId) {
   browser.tabs.update(tabId, { active: true }, function(tab) {
-    // Also focus the window containing the tab
     browser.windows.update(tab.windowId, { focused: true });
-    // Close the popup
     window.close();
   });
 }
 
 function closeTab(tabId) {
   browser.tabs.remove(tabId, function() {
-    // Reload the tab list
     loadTabs();
   });
 }
 
 function closeAllTabs() {
-  // Get all tab IDs except the current one
   const tabIds = allTabs
     .filter(tab => !tab.active)
     .map(tab => tab.id);
