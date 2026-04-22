@@ -299,6 +299,59 @@ function toggleWindow(windowId) {
   }
 }
 
+// --- Favicon / letter icon ---
+
+const LETTER_COLORS = [
+  '#1d1d1f', '#5E6AD2', '#FF6B6B', '#34C759',
+  '#FF9500', '#007AFF', '#FF2D55', '#AF52DE',
+  '#00C7BE', '#D97757',
+];
+
+function domainHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
+
+function createFaviconEl(tab, domain) {
+  const wrap = document.createElement('div');
+  wrap.className = 'favicon-wrap';
+
+  const candidates = [];
+  if (tab.favIconUrl) candidates.push(tab.favIconUrl);
+  if (domain) candidates.push(`https://${domain}/favicon.ico`);
+
+  function tryNext() {
+    if (candidates.length === 0) {
+      wrap.appendChild(makeLetterIcon(domain));
+      return;
+    }
+    const img = document.createElement('img');
+    img.className = 'favicon';
+    img.src = candidates.shift();
+    img.onerror = () => {
+      if (wrap.contains(img)) wrap.removeChild(img);
+      tryNext();
+    };
+    wrap.appendChild(img);
+  }
+
+  tryNext();
+  return wrap;
+}
+
+function makeLetterIcon(domain) {
+  const letter = domain ? domain[0].toUpperCase() : '?';
+  const color = LETTER_COLORS[domainHash(domain) % LETTER_COLORS.length];
+  const el = document.createElement('div');
+  el.className = 'favicon-letter';
+  el.textContent = letter;
+  el.style.background = color;
+  return el;
+}
+
 // --- Tab element ---
 
 function formatElapsed(ms) {
@@ -317,10 +370,8 @@ function createTabElement(tab, timestamps = {}) {
   tabItem.className = 'tab-item';
   if (tab.active) tabItem.classList.add('active');
 
-  const favicon = document.createElement('img');
-  favicon.className = 'favicon';
-  favicon.src = tab.favIconUrl || 'icons/icon-16.png';
-  favicon.onerror = function() { this.src = 'icons/icon-16.png'; };
+  let domainStr = '';
+  try { domainStr = new URL(tab.url).hostname.replace(/^www\./, ''); } catch {}
 
   const tabInfo = document.createElement('div');
   tabInfo.className = 'tab-info';
@@ -336,11 +387,7 @@ function createTabElement(tab, timestamps = {}) {
 
   const domain = document.createElement('div');
   domain.className = 'tab-url';
-  try {
-    domain.textContent = new URL(tab.url).hostname.replace(/^www\./, '');
-  } catch {
-    domain.textContent = tab.url;
-  }
+  domain.textContent = domainStr || tab.url;
   domain.title = tab.url;
 
   const openedAt = timestamps[`tab_${tab.id}`];
@@ -368,7 +415,7 @@ function createTabElement(tab, timestamps = {}) {
 
   tabItem.addEventListener('click', function() { switchToTab(tab.id); });
 
-  tabItem.appendChild(favicon);
+  tabItem.appendChild(createFaviconEl(tab, domainStr));
   tabItem.appendChild(tabInfo);
   tabItem.appendChild(closeBtn);
 

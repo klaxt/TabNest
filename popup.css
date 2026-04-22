@@ -270,11 +270,31 @@ body {
   font-weight: 500;
 }
 
-.favicon {
+.favicon-wrap {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+}
+
+.favicon {
+  width: 16px;
+  height: 16px;
   border-radius: 2px;
+  display: block;
+}
+
+.favicon-letter {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.02em;
+  user-select: none;
 }
 
 .tab-info {
