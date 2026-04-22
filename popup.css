@@ -47,6 +47,11 @@ body {
   gap: 6px;
 }
 
+.header-icon {
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
 .header-title {
   font-size: 13px;
   font-weight: 600;
