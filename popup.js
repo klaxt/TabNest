@@ -18,10 +18,24 @@ function setupEventListeners() {
   });
 
   const closeAllBtn = document.getElementById('closeAllBtn');
-  closeAllBtn.addEventListener('click', function() {
-    if (confirm('Are you sure you want to close all tabs?')) {
-      closeAllTabs();
-    }
+  const closeAllConfirm = document.getElementById('closeAllConfirm');
+  const closeAllConfirmBtn = document.getElementById('closeAllConfirmBtn');
+  const closeAllCancelBtn = document.getElementById('closeAllCancelBtn');
+
+  closeAllBtn.addEventListener('click', () => {
+    closeAllBtn.classList.add('hidden');
+    closeAllConfirm.classList.remove('hidden');
+  });
+
+  closeAllCancelBtn.addEventListener('click', () => {
+    closeAllConfirm.classList.add('hidden');
+    closeAllBtn.classList.remove('hidden');
+  });
+
+  closeAllConfirmBtn.addEventListener('click', () => {
+    closeAllTabs();
+    closeAllConfirm.classList.add('hidden');
+    closeAllBtn.classList.remove('hidden');
   });
 }
 
@@ -103,7 +117,6 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   windowGroup.dataset.windowId = windowId;
   windowGroup.draggable = true;
 
-  // Drag events
   windowGroup.addEventListener('dragstart', handleDragStart);
   windowGroup.addEventListener('dragover', handleDragOver);
   windowGroup.addEventListener('dragleave', handleDragLeave);
@@ -113,9 +126,15 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   const windowHeader = document.createElement('div');
   windowHeader.className = 'window-header';
 
+  // Drag handle — 3-line SVG
   const dragHandle = document.createElement('span');
   dragHandle.className = 'drag-handle';
   dragHandle.title = 'Drag to reorder';
+  dragHandle.innerHTML = `<svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+    <rect y="0" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+    <rect y="4" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+    <rect y="8" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+  </svg>`;
 
   const labelEl = document.createElement('span');
   labelEl.className = 'window-label';
@@ -125,8 +144,14 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   countBadge.className = 'window-tab-count';
   countBadge.textContent = `${tabs.length} tab${tabs.length !== 1 ? 's' : ''}`;
 
+  // Chevron — right-pointing SVG, rotates 90° when open
   const chevron = document.createElement('span');
-  chevron.className = 'window-chevron' + (isCollapsed ? ' collapsed' : '');
+  chevron.className = 'window-chevron';
+  chevron.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+  chevron.style.transition = 'transform 0.2s ease';
+  chevron.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)';
 
   windowHeader.appendChild(dragHandle);
   windowHeader.appendChild(labelEl);
@@ -136,7 +161,6 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   let toggleTimer = null;
   windowHeader.addEventListener('click', e => {
     if (e.target.closest('.drag-handle')) return;
-    // Delay toggle when clicking the label so a dblclick can cancel it
     if (key !== 'pinned' && e.target.closest('.window-label')) {
       clearTimeout(toggleTimer);
       toggleTimer = setTimeout(() => toggleWindow(windowId), 220);
@@ -170,7 +194,6 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
 function handleDragStart(e) {
   dragSrcId = this.dataset.windowId;
   e.dataTransfer.effectAllowed = 'move';
-  // Delay so the drag image renders before the class is applied
   setTimeout(() => this.classList.add('dragging'), 0);
 }
 
@@ -270,8 +293,9 @@ function toggleWindow(windowId) {
 
   const windowGroup = document.querySelector(`[data-window-id="${windowId}"]`);
   if (windowGroup) {
-    windowGroup.querySelector('.window-tabs').classList.toggle('collapsed');
-    windowGroup.querySelector('.window-chevron').classList.toggle('collapsed');
+    const isNowCollapsed = collapsedWindows.has(key);
+    windowGroup.querySelector('.window-tabs').classList.toggle('collapsed', isNowCollapsed);
+    windowGroup.querySelector('.window-chevron').style.transform = isNowCollapsed ? 'rotate(0deg)' : 'rotate(90deg)';
   }
 }
 
@@ -306,24 +330,37 @@ function createTabElement(tab, timestamps = {}) {
   title.textContent = tab.title || 'Untitled';
   title.title = tab.title;
 
-  const url = document.createElement('div');
-  url.className = 'tab-url';
-  url.textContent = tab.url;
-  url.title = tab.url;
+  // Domain + elapsed on one line
+  const tabMeta = document.createElement('div');
+  tabMeta.className = 'tab-meta';
+
+  const domain = document.createElement('div');
+  domain.className = 'tab-url';
+  try {
+    domain.textContent = new URL(tab.url).hostname.replace(/^www\./, '');
+  } catch {
+    domain.textContent = tab.url;
+  }
+  domain.title = tab.url;
 
   const openedAt = timestamps[`tab_${tab.id}`];
-  const elapsed = document.createElement('div');
+  const elapsed = document.createElement('span');
   elapsed.className = 'tab-elapsed';
   elapsed.textContent = openedAt ? formatElapsed(Date.now() - openedAt) : '';
 
-  tabInfo.appendChild(title);
-  tabInfo.appendChild(url);
-  tabInfo.appendChild(elapsed);
+  tabMeta.appendChild(domain);
+  tabMeta.appendChild(elapsed);
 
+  tabInfo.appendChild(title);
+  tabInfo.appendChild(tabMeta);
+
+  // Close button — hidden until hover (CSS handles opacity)
   const closeBtn = document.createElement('button');
   closeBtn.className = 'close-btn';
-  closeBtn.innerHTML = '&times;';
   closeBtn.title = 'Close tab';
+  closeBtn.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+    <path d="M1.5 1.5L6.5 6.5M6.5 1.5L1.5 6.5" stroke="#86868b" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`;
   closeBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     closeTab(tab.id);

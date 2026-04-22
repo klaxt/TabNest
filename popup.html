@@ -9,22 +9,38 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Open Tabs</h1>
-      <div class="tab-count">
-        <span id="tabCount">0</span> tabs
+      <div class="header-row">
+        <div class="header-brand">
+          <svg class="header-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="1" width="6.5" height="6.5" rx="1.5" fill="#007AFF"/>
+            <rect x="8.5" y="1" width="6.5" height="6.5" rx="1.5" fill="#007AFF" opacity="0.5"/>
+            <rect x="1" y="8.5" width="6.5" height="6.5" rx="1.5" fill="#007AFF" opacity="0.5"/>
+            <rect x="8.5" y="8.5" width="6.5" height="6.5" rx="1.5" fill="#007AFF" opacity="0.25"/>
+          </svg>
+          <span class="header-title">TabNest</span>
+        </div>
+        <span class="tab-count"><span id="tabCount">0</span> tabs</span>
+      </div>
+      <div class="search-container">
+        <div class="search-inner">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="search-icon" aria-hidden="true">
+            <circle cx="6" cy="6" r="4.25" stroke="#86868b" stroke-width="1.5"/>
+            <path d="M9.5 9.5L12 12" stroke="#86868b" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search tabs…" />
+        </div>
       </div>
     </div>
 
-    <div class="search-container">
-      <input type="text" id="searchInput" placeholder="Search tabs..." />
-    </div>
-
-    <div id="tabList" class="tab-list">
-      <!-- Tabs will be dynamically inserted here -->
-    </div>
+    <div id="tabList" class="tab-list"></div>
 
     <div class="footer">
-      <button id="closeAllBtn" class="btn-secondary">Close All Tabs</button>
+      <button id="closeAllBtn" class="btn-close-all">Close All Tabs</button>
+      <div id="closeAllConfirm" class="close-confirm hidden">
+        <span class="close-confirm-label">Close all tabs?</span>
+        <button id="closeAllConfirmBtn" class="btn-confirm-yes">Close All</button>
+        <button id="closeAllCancelBtn" class="btn-confirm-cancel">Cancel</button>
+      </div>
     </div>
   </div>
 
