@@ -136,6 +136,41 @@ body {
   background: #ebebed;
 }
 
+.drag-handle {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: grab;
+  padding: 2px 2px;
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+
+.drag-handle::before,
+.drag-handle::after {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  box-shadow: 0 3px 0 currentColor;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.window-group.dragging {
+  opacity: 0.4;
+}
+
+.window-group.drag-over {
+  outline: 2px solid #667eea;
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+
 .window-label {
   flex: 1;
 }

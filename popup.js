@@ -1,6 +1,9 @@
 let allTabs = [];
 let windowNumberMap = {};
+let groupOrder = [];
 const collapsedWindows = new Set();
+
+let dragSrcId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
   loadTabs();
@@ -36,8 +39,15 @@ function loadTabs() {
     windowNumberMap = {};
     windowIds.forEach((id, i) => { windowNumberMap[id] = i + 1; });
 
-    const keys = allTabs.map(tab => `tab_${tab.id}`);
-    browser.storage.local.get(keys, function(timestamps) {
+    const tabKeys = allTabs.map(tab => `tab_${tab.id}`);
+    browser.storage.local.get(['collapsedWindows', 'groupOrder', ...tabKeys], function(result) {
+      collapsedWindows.clear();
+      (result.collapsedWindows || []).forEach(id => collapsedWindows.add(String(id)));
+      groupOrder = result.groupOrder || [];
+
+      const timestamps = {};
+      tabKeys.forEach(k => { if (result[k]) timestamps[k] = result[k]; });
+
       displayTabs(allTabs, timestamps);
       updateTabCount(allTabs.length);
     });
@@ -56,21 +66,29 @@ function displayTabs(tabs, timestamps = {}) {
   const pinnedTabs = tabs.filter(tab => tab.pinned);
   const unpinnedTabs = tabs.filter(tab => !tab.pinned);
 
-  if (pinnedTabs.length > 0) {
-    tabList.appendChild(buildWindowGroup('pinned', 'Pinned Tabs', pinnedTabs, timestamps));
-  }
-
-  // Group unpinned tabs by window
   const windowGroups = {};
   unpinnedTabs.forEach(tab => {
     if (!windowGroups[tab.windowId]) windowGroups[tab.windowId] = [];
     windowGroups[tab.windowId].push(tab);
   });
-  const windowOrder = Object.keys(windowGroups).sort((a, b) => windowNumberMap[a] - windowNumberMap[b]);
 
-  windowOrder.forEach(windowId => {
-    const label = `Window ${windowNumberMap[windowId] ?? windowId}`;
-    tabList.appendChild(buildWindowGroup(windowId, label, windowGroups[windowId], timestamps));
+  // Build available keys in stable numeric order
+  const available = [];
+  if (pinnedTabs.length > 0) available.push('pinned');
+  Object.keys(windowGroups)
+    .sort((a, b) => windowNumberMap[a] - windowNumberMap[b])
+    .forEach(id => available.push(String(id)));
+
+  // Apply saved order, appending any new groups at the end
+  const ordered = [
+    ...groupOrder.filter(k => available.includes(String(k))),
+    ...available.filter(k => !groupOrder.map(String).includes(String(k)))
+  ];
+
+  ordered.forEach(key => {
+    const groupTabs = key === 'pinned' ? pinnedTabs : windowGroups[key];
+    const label = key === 'pinned' ? 'Pinned Tabs' : `Window ${windowNumberMap[key]}`;
+    tabList.appendChild(buildWindowGroup(key, label, groupTabs, timestamps));
   });
 }
 
@@ -81,9 +99,21 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   const windowGroup = document.createElement('div');
   windowGroup.className = 'window-group';
   windowGroup.dataset.windowId = windowId;
+  windowGroup.draggable = true;
+
+  // Drag events
+  windowGroup.addEventListener('dragstart', handleDragStart);
+  windowGroup.addEventListener('dragover', handleDragOver);
+  windowGroup.addEventListener('dragleave', handleDragLeave);
+  windowGroup.addEventListener('drop', handleDrop);
+  windowGroup.addEventListener('dragend', handleDragEnd);
 
   const windowHeader = document.createElement('div');
   windowHeader.className = 'window-header';
+
+  const dragHandle = document.createElement('span');
+  dragHandle.className = 'drag-handle';
+  dragHandle.title = 'Drag to reorder';
 
   const labelEl = document.createElement('span');
   labelEl.className = 'window-label';
@@ -96,10 +126,13 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   const chevron = document.createElement('span');
   chevron.className = 'window-chevron' + (isCollapsed ? ' collapsed' : '');
 
+  windowHeader.appendChild(dragHandle);
   windowHeader.appendChild(labelEl);
   windowHeader.appendChild(countBadge);
   windowHeader.appendChild(chevron);
-  windowHeader.addEventListener('click', () => toggleWindow(windowId));
+  windowHeader.addEventListener('click', e => {
+    if (!e.target.closest('.drag-handle')) toggleWindow(windowId);
+  });
 
   const tabContainer = document.createElement('div');
   tabContainer.className = 'window-tabs' + (isCollapsed ? ' collapsed' : '');
@@ -112,6 +145,64 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   return windowGroup;
 }
 
+// --- Drag and drop ---
+
+function handleDragStart(e) {
+  dragSrcId = this.dataset.windowId;
+  e.dataTransfer.effectAllowed = 'move';
+  // Delay so the drag image renders before the class is applied
+  setTimeout(() => this.classList.add('dragging'), 0);
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (this.dataset.windowId !== dragSrcId) {
+    this.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave() {
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.stopPropagation();
+  this.classList.remove('drag-over');
+  const targetId = this.dataset.windowId;
+  if (dragSrcId === targetId) return;
+
+  const tabList = document.getElementById('tabList');
+  const srcEl = tabList.querySelector(`[data-window-id="${dragSrcId}"]`);
+  const tgtEl = tabList.querySelector(`[data-window-id="${targetId}"]`);
+  if (!srcEl || !tgtEl) return;
+
+  const children = [...tabList.children];
+  const srcIdx = children.indexOf(srcEl);
+  const tgtIdx = children.indexOf(tgtEl);
+
+  if (srcIdx < tgtIdx) {
+    tabList.insertBefore(srcEl, tgtEl.nextSibling);
+  } else {
+    tabList.insertBefore(srcEl, tgtEl);
+  }
+
+  saveGroupOrder();
+}
+
+function handleDragEnd() {
+  this.classList.remove('dragging');
+  document.querySelectorAll('.window-group').forEach(el => el.classList.remove('drag-over'));
+}
+
+function saveGroupOrder() {
+  const tabList = document.getElementById('tabList');
+  groupOrder = [...tabList.querySelectorAll('.window-group')].map(el => el.dataset.windowId);
+  browser.storage.local.set({ groupOrder });
+}
+
+// --- Toggle collapse ---
+
 function toggleWindow(windowId) {
   const key = String(windowId);
   if (collapsedWindows.has(key)) {
@@ -119,6 +210,7 @@ function toggleWindow(windowId) {
   } else {
     collapsedWindows.add(key);
   }
+  browser.storage.local.set({ collapsedWindows: [...collapsedWindows] });
 
   const windowGroup = document.querySelector(`[data-window-id="${windowId}"]`);
   if (windowGroup) {
@@ -126,6 +218,8 @@ function toggleWindow(windowId) {
     windowGroup.querySelector('.window-chevron').classList.toggle('collapsed');
   }
 }
+
+// --- Tab element ---
 
 function formatElapsed(ms) {
   const minutes = Math.floor(ms / 60000);
@@ -141,16 +235,12 @@ function formatElapsed(ms) {
 function createTabElement(tab, timestamps = {}) {
   const tabItem = document.createElement('div');
   tabItem.className = 'tab-item';
-  if (tab.active) {
-    tabItem.classList.add('active');
-  }
+  if (tab.active) tabItem.classList.add('active');
 
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
   favicon.src = tab.favIconUrl || 'icons/icon-16.png';
-  favicon.onerror = function() {
-    this.src = 'icons/icon-16.png';
-  };
+  favicon.onerror = function() { this.src = 'icons/icon-16.png'; };
 
   const tabInfo = document.createElement('div');
   tabInfo.className = 'tab-info';
@@ -183,9 +273,7 @@ function createTabElement(tab, timestamps = {}) {
     closeTab(tab.id);
   });
 
-  tabItem.addEventListener('click', function() {
-    switchToTab(tab.id);
-  });
+  tabItem.addEventListener('click', function() { switchToTab(tab.id); });
 
   tabItem.appendChild(favicon);
   tabItem.appendChild(tabInfo);
@@ -194,9 +282,14 @@ function createTabElement(tab, timestamps = {}) {
   return tabItem;
 }
 
+// --- Filter ---
+
 function filterTabs(searchTerm) {
-  const keys = allTabs.map(tab => `tab_${tab.id}`);
-  browser.storage.local.get(keys, function(timestamps) {
+  const tabKeys = allTabs.map(tab => `tab_${tab.id}`);
+  browser.storage.local.get(tabKeys, function(result) {
+    const timestamps = {};
+    tabKeys.forEach(k => { if (result[k]) timestamps[k] = result[k]; });
+
     if (!searchTerm) {
       displayTabs(allTabs, timestamps);
       return;
@@ -213,6 +306,8 @@ function filterTabs(searchTerm) {
   });
 }
 
+// --- Tab actions ---
+
 function switchToTab(tabId) {
   browser.tabs.update(tabId, { active: true }, function(tab) {
     browser.windows.update(tab.windowId, { focused: true });
@@ -221,20 +316,13 @@ function switchToTab(tabId) {
 }
 
 function closeTab(tabId) {
-  browser.tabs.remove(tabId, function() {
-    loadTabs();
-  });
+  browser.tabs.remove(tabId, function() { loadTabs(); });
 }
 
 function closeAllTabs() {
-  const tabIds = allTabs
-    .filter(tab => !tab.active)
-    .map(tab => tab.id);
-
+  const tabIds = allTabs.filter(tab => !tab.active).map(tab => tab.id);
   if (tabIds.length > 0) {
-    browser.tabs.remove(tabIds, function() {
-      loadTabs();
-    });
+    browser.tabs.remove(tabIds, function() { loadTabs(); });
   }
 }
 
