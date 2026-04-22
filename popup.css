@@ -101,6 +101,20 @@ body {
   border-bottom: none;
 }
 
+.window-group[data-window-id="pinned"] .window-header {
+  background: #f0f4ff;
+  color: #4a4aff;
+}
+
+.window-group[data-window-id="pinned"] .window-tab-count {
+  background: #d0d5ff;
+  color: #4a4aff;
+}
+
+.window-group[data-window-id="pinned"] .window-chevron::before {
+  border-color: #4a4aff;
+}
+
 .window-header {
   background: #f5f5f7;
   padding: 8px 16px;

@@ -1,4 +1,3 @@
-// Get all tabs and display them
 let allTabs = [];
 const collapsedWindows = new Set();
 
@@ -23,9 +22,15 @@ function setupEventListeners() {
 
 function loadTabs() {
   browser.tabs.query({}, function(tabs) {
-    allTabs = tabs;
-    displayTabs(tabs);
-    updateTabCount(tabs.length);
+    // Deduplicate by ID — Firefox returns pinned tabs once per window
+    const seen = new Set();
+    allTabs = tabs.filter(tab => {
+      if (seen.has(tab.id)) return false;
+      seen.add(tab.id);
+      return true;
+    });
+    displayTabs(allTabs);
+    updateTabCount(allTabs.length);
   });
 }
 
@@ -38,10 +43,17 @@ function displayTabs(tabs) {
     return;
   }
 
-  // Group tabs by window, preserving order
+  const pinnedTabs = tabs.filter(tab => tab.pinned);
+  const unpinnedTabs = tabs.filter(tab => !tab.pinned);
+
+  if (pinnedTabs.length > 0) {
+    tabList.appendChild(buildWindowGroup('pinned', 'Pinned Tabs', pinnedTabs));
+  }
+
+  // Group unpinned tabs by window, preserving order
   const windowGroups = {};
   const windowOrder = [];
-  tabs.forEach(tab => {
+  unpinnedTabs.forEach(tab => {
     if (!windowGroups[tab.windowId]) {
       windowGroups[tab.windowId] = [];
       windowOrder.push(tab.windowId);
@@ -50,43 +62,46 @@ function displayTabs(tabs) {
   });
 
   windowOrder.forEach((windowId, index) => {
-    const windowTabs = windowGroups[windowId];
-    const isCollapsed = collapsedWindows.has(String(windowId));
-
-    const windowGroup = document.createElement('div');
-    windowGroup.className = 'window-group';
-    windowGroup.dataset.windowId = windowId;
-
-    const windowHeader = document.createElement('div');
-    windowHeader.className = 'window-header';
-
-    const label = document.createElement('span');
-    label.className = 'window-label';
-    label.textContent = `Window ${index + 1}`;
-
-    const countBadge = document.createElement('span');
-    countBadge.className = 'window-tab-count';
-    countBadge.textContent = `${windowTabs.length} tab${windowTabs.length !== 1 ? 's' : ''}`;
-
-    const chevron = document.createElement('span');
-    chevron.className = 'window-chevron' + (isCollapsed ? ' collapsed' : '');
-
-    windowHeader.appendChild(label);
-    windowHeader.appendChild(countBadge);
-    windowHeader.appendChild(chevron);
-    windowHeader.addEventListener('click', () => toggleWindow(windowId));
-
-    const tabContainer = document.createElement('div');
-    tabContainer.className = 'window-tabs' + (isCollapsed ? ' collapsed' : '');
-
-    windowTabs.forEach(tab => {
-      tabContainer.appendChild(createTabElement(tab));
-    });
-
-    windowGroup.appendChild(windowHeader);
-    windowGroup.appendChild(tabContainer);
-    tabList.appendChild(windowGroup);
+    tabList.appendChild(buildWindowGroup(windowId, `Window ${index + 1}`, windowGroups[windowId]));
   });
+}
+
+function buildWindowGroup(windowId, label, tabs) {
+  const key = String(windowId);
+  const isCollapsed = collapsedWindows.has(key);
+
+  const windowGroup = document.createElement('div');
+  windowGroup.className = 'window-group';
+  windowGroup.dataset.windowId = windowId;
+
+  const windowHeader = document.createElement('div');
+  windowHeader.className = 'window-header';
+
+  const labelEl = document.createElement('span');
+  labelEl.className = 'window-label';
+  labelEl.textContent = label;
+
+  const countBadge = document.createElement('span');
+  countBadge.className = 'window-tab-count';
+  countBadge.textContent = `${tabs.length} tab${tabs.length !== 1 ? 's' : ''}`;
+
+  const chevron = document.createElement('span');
+  chevron.className = 'window-chevron' + (isCollapsed ? ' collapsed' : '');
+
+  windowHeader.appendChild(labelEl);
+  windowHeader.appendChild(countBadge);
+  windowHeader.appendChild(chevron);
+  windowHeader.addEventListener('click', () => toggleWindow(windowId));
+
+  const tabContainer = document.createElement('div');
+  tabContainer.className = 'window-tabs' + (isCollapsed ? ' collapsed' : '');
+
+  tabs.forEach(tab => tabContainer.appendChild(createTabElement(tab)));
+
+  windowGroup.appendChild(windowHeader);
+  windowGroup.appendChild(tabContainer);
+
+  return windowGroup;
 }
 
 function toggleWindow(windowId) {
@@ -196,6 +211,5 @@ function closeAllTabs() {
 }
 
 function updateTabCount(count) {
-  const tabCount = document.getElementById('tabCount');
-  tabCount.textContent = count;
+  document.getElementById('tabCount').textContent = count;
 }
