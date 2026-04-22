@@ -1,4 +1,5 @@
 let allTabs = [];
+let windowNumberMap = {};
 const collapsedWindows = new Set();
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -30,6 +31,11 @@ function loadTabs() {
       return true;
     });
 
+    // Build stable window numbers sorted by windowId (creation order)
+    const windowIds = [...new Set(allTabs.filter(t => !t.pinned).map(t => t.windowId))].sort((a, b) => a - b);
+    windowNumberMap = {};
+    windowIds.forEach((id, i) => { windowNumberMap[id] = i + 1; });
+
     const keys = allTabs.map(tab => `tab_${tab.id}`);
     browser.storage.local.get(keys, function(timestamps) {
       displayTabs(allTabs, timestamps);
@@ -54,19 +60,17 @@ function displayTabs(tabs, timestamps = {}) {
     tabList.appendChild(buildWindowGroup('pinned', 'Pinned Tabs', pinnedTabs, timestamps));
   }
 
-  // Group unpinned tabs by window, preserving order
+  // Group unpinned tabs by window
   const windowGroups = {};
-  const windowOrder = [];
   unpinnedTabs.forEach(tab => {
-    if (!windowGroups[tab.windowId]) {
-      windowGroups[tab.windowId] = [];
-      windowOrder.push(tab.windowId);
-    }
+    if (!windowGroups[tab.windowId]) windowGroups[tab.windowId] = [];
     windowGroups[tab.windowId].push(tab);
   });
+  const windowOrder = Object.keys(windowGroups).sort((a, b) => windowNumberMap[a] - windowNumberMap[b]);
 
-  windowOrder.forEach((windowId, index) => {
-    tabList.appendChild(buildWindowGroup(windowId, `Window ${index + 1}`, windowGroups[windowId], timestamps));
+  windowOrder.forEach(windowId => {
+    const label = `Window ${windowNumberMap[windowId] ?? windowId}`;
+    tabList.appendChild(buildWindowGroup(windowId, label, windowGroups[windowId], timestamps));
   });
 }
 
