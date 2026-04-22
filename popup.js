@@ -1,6 +1,7 @@
 let allTabs = [];
 let windowNumberMap = {};
 let groupOrder = [];
+let groupNames = {};
 const collapsedWindows = new Set();
 
 let dragSrcId = null;
@@ -40,10 +41,11 @@ function loadTabs() {
     windowIds.forEach((id, i) => { windowNumberMap[id] = i + 1; });
 
     const tabKeys = allTabs.map(tab => `tab_${tab.id}`);
-    browser.storage.local.get(['collapsedWindows', 'groupOrder', ...tabKeys], function(result) {
+    browser.storage.local.get(['collapsedWindows', 'groupOrder', 'groupNames', ...tabKeys], function(result) {
       collapsedWindows.clear();
       (result.collapsedWindows || []).forEach(id => collapsedWindows.add(String(id)));
       groupOrder = result.groupOrder || [];
+      groupNames = result.groupNames || {};
 
       const timestamps = {};
       tabKeys.forEach(k => { if (result[k]) timestamps[k] = result[k]; });
@@ -117,7 +119,7 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
 
   const labelEl = document.createElement('span');
   labelEl.className = 'window-label';
-  labelEl.textContent = label;
+  labelEl.textContent = groupNames[key] || label;
 
   const countBadge = document.createElement('span');
   countBadge.className = 'window-tab-count';
@@ -130,9 +132,27 @@ function buildWindowGroup(windowId, label, tabs, timestamps) {
   windowHeader.appendChild(labelEl);
   windowHeader.appendChild(countBadge);
   windowHeader.appendChild(chevron);
+
+  let toggleTimer = null;
   windowHeader.addEventListener('click', e => {
-    if (!e.target.closest('.drag-handle')) toggleWindow(windowId);
+    if (e.target.closest('.drag-handle')) return;
+    // Delay toggle when clicking the label so a dblclick can cancel it
+    if (key !== 'pinned' && e.target.closest('.window-label')) {
+      clearTimeout(toggleTimer);
+      toggleTimer = setTimeout(() => toggleWindow(windowId), 220);
+    } else {
+      toggleWindow(windowId);
+    }
   });
+
+  if (key !== 'pinned') {
+    labelEl.title = 'Double-click to rename';
+    labelEl.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      clearTimeout(toggleTimer);
+      startRename(labelEl, key, label);
+    });
+  }
 
   const tabContainer = document.createElement('div');
   tabContainer.className = 'window-tabs' + (isCollapsed ? ' collapsed' : '');
@@ -199,6 +219,42 @@ function saveGroupOrder() {
   const tabList = document.getElementById('tabList');
   groupOrder = [...tabList.querySelectorAll('.window-group')].map(el => el.dataset.windowId);
   browser.storage.local.set({ groupOrder });
+}
+
+// --- Rename ---
+
+function startRename(labelEl, key, defaultLabel) {
+  const current = groupNames[key] || defaultLabel;
+
+  const input = document.createElement('input');
+  input.className = 'rename-input';
+  input.value = current;
+  input.setAttribute('size', Math.max(current.length, 10));
+
+  labelEl.replaceWith(input);
+  input.select();
+
+  function commit() {
+    const name = input.value.trim();
+    if (name && name !== defaultLabel) {
+      groupNames[key] = name;
+    } else {
+      delete groupNames[key];
+    }
+    browser.storage.local.set({ groupNames });
+    input.replaceWith(labelEl);
+    labelEl.textContent = groupNames[key] || defaultLabel;
+  }
+
+  function cancel() {
+    input.replaceWith(labelEl);
+  }
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.removeEventListener('blur', commit); cancel(); }
+  });
 }
 
 // --- Toggle collapse ---

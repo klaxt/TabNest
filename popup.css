@@ -175,6 +175,19 @@ body {
   flex: 1;
 }
 
+.rename-input {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  background: white;
+  border: 1px solid #667eea;
+  border-radius: 4px;
+  padding: 1px 6px;
+  outline: none;
+  min-width: 80px;
+}
+
 .window-tab-count {
   background: #d1d1d6;
   color: #444;
